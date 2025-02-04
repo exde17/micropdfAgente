@@ -1,6 +1,7 @@
 
 from fastapi import Depends, FastAPI, Response, Request,  HTTPException
 from sqlalchemy import text
+from app.excel_generator import generate_excel
 from app.pdf_generator import generate_pdf
 from fastapi.middleware.cors import CORSMiddleware
 # from app.db import get_db
@@ -43,8 +44,7 @@ async def receive_data(request: Request):
     tipo = data.get("tipo", "").lower()
 
     if tipo == "reporte":
-        # Si el tipo es "reporte", llamar a generate_report con data como parámetro directamente
-        # return await generate_report(data)
+        
         return data
     elif tipo == "natural":
         # Si el tipo es "natural", devolver una respuesta en JSON con el texto adecuado
@@ -53,6 +53,13 @@ async def receive_data(request: Request):
     else:
         # Si el tipo no es válido, devolver un mensaje de error
         return {"error": "Tipo de solicitud no reconocido. Usa 'reporte' o 'natural'."}
+    
+# Ruta para generar el reporte en Excel
+@app.post("/generate-excel")
+async def generate_excel_report(data: dict):
+    excel_binary = generate_excel(data)
+    headers = {'Content-Disposition': 'attachment; filename="Reporte.xlsx"'}
+    return Response(content=excel_binary, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", headers=headers)    
 
 # -------------------- NUEVOS ENDPOINTS --------------------
 
@@ -124,47 +131,7 @@ async def get_calificaciones():
 
         return {"calificaciones": calificaciones}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))       
-    
-#promedio de calificaciones
-# @app.get("/promedio-calificaciones")
-# async def get_calificaciones():
-#     conn = get_db_connection()
-#     if conn is None:
-#         raise HTTPException(status_code=500, detail="No se pudo conectar a la base de datos.")
-
-#     try:
-#         cur = conn.cursor()
-#         cur.execute('SELECT "usuarioId", puntaje FROM public.calificacion;')
-
-#         # Procesar los resultados para calcular el promedio por usuario
-#         calificaciones_raw = cur.fetchall()
-
-#         # Diccionario para acumular los puntajes por usuario
-#         usuarios_calificaciones = {}
-
-#         for usuario_id, puntaje in calificaciones_raw:
-#             if usuario_id in usuarios_calificaciones:
-#                 usuarios_calificaciones[usuario_id]['suma_puntaje'] += puntaje
-#                 usuarios_calificaciones[usuario_id]['cantidad'] += 1
-#             else:
-#                 usuarios_calificaciones[usuario_id] = {'suma_puntaje': puntaje, 'cantidad': 1}
-
-#         # Calcular el promedio para cada usuario
-#         calificaciones = [
-#             {
-#                 "usuarioId": usuario_id,
-#                 "promedio_puntaje": round(data['suma_puntaje'] / data['cantidad'], 2)
-#             }
-#             for usuario_id, data in usuarios_calificaciones.items()
-#         ]
-
-#         cur.close()
-#         conn.close()
-
-#         return {"calificaciones": calificaciones}
-#     except Exception as e:
-#         raise HTTPException(status_code=500, detail=str(e))    
+        raise HTTPException(status_code=500, detail=str(e))         
 
 @app.get("/promedio-calificaciones")
 async def get_calificaciones():
